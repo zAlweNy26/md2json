@@ -5,7 +5,7 @@ import _ from 'lodash'
 // https://chubakbidpaa.com/interesting/2021/09/28/regex-for-md.html
 
 const readInterface = readline.createInterface({
-    input: fs.createReadStream('./input/Test.md'), // D&D_5E_SRD_v5.1
+    input: fs.createReadStream('./input/Test.md'),
 })
 
 let observe = (obj, fn) => new Proxy(obj, {
@@ -17,7 +17,7 @@ let observe = (obj, fn) => new Proxy(obj, {
 })
 
 const indentSpaces = 2
-const keepHorizontalRule = false 
+const keepHorizontalRule = true
 const replaceBasicStyle = true
 
 String.prototype.isTable = function () { return /^[|]/g.test(this) }
@@ -25,21 +25,20 @@ String.prototype.isHeader = function () { return /^[#]/g.test(this) }
 String.prototype.headerType = function () { return this.isHeader() ? (this.match(/#/g) || []).length : 0 }
 String.prototype.isHorizontalRule = function () { return /^(\*|\_|\-)\1{2,}/g.test(this) }
 String.prototype.isList = function () { return /^(\-|\*|\+)\1{0}\s/g.test(this) || /^(\d+.\s)/g.test(this) }
-String.prototype.isNormal = function () {
-    return !(this.isTable() || this.isHeader() || this.isHorizontalRule() || this.isList())
-}
+String.prototype.isNormal = function () { return !(this.isTable() || this.isHeader() || this.isList()) }
 String.prototype.nestLevel = function () { return this.match(/^\s*/g)[0].length / indentSpaces }
-String.prototype.toHtml = function () { 
-    return replaceBasicStyle ? this
+String.prototype.toHtml = function () {
+    return replaceBasicStyle && !this.isHorizontalRule() ? this
         .replace(/!\[([^\]]*)\]\((.*?)(?:(?:\s"|')(.*)+(?:"|'))?\)/g, "<img alt='$1' title='$3' src='$2' />")
         .replace(/\[([^\]]*)\]\((.*?)(?:(?:\s"|')(.*)+(?:"|'))?\)/g, "<a href='$2' alt='$3'>$1</a>")
         .replace(/`([^`]+)`/g, "<code>$1</code>")
         .replace(/(\\n)/g, "<br/>")
-        .replace(/(\*\*|__)(?=\S)([^\r]*?\S[*_]*)\1/g, "<strong>$2</strong>")
-        .replace(/(\*|_)(?=\S)([^\r]*?\S)\1/g, "<em>$2</em>") : this
+        .replace(/(\*\*|__)(?=\S)([^\r]*?\S)\1/g, "<strong>$2</strong>")
+        .replace(/(\*|_)(?=\S)([^\r]*?\S)\1/g, "<em>$2</em>")
+        .replace(/(\~\~)(?=\S)([^\r]*?\S)\1/g, "<s>$2</s>") : this
 }
 
-let jsonOutput = [{}], nestList = [], tableObj = {}
+let jsonOutput = [], nestList = [], tableObj = {}
 let lastKey = '[0]', prevLine = "", currLine = ""
 let headerType = 0, contentCount = 0, tableCount = 0
 let headersCount = observe([], arr => {
@@ -59,6 +58,7 @@ readInterface.on('line', line => {
     line = headerType > 0 ? line.trim().replace(/#/g, '').trim() : line
     if (line != '' && (keepHorizontalRule || !line.trim().isHorizontalRule())) {
         prevLine = currLine
+        currLine = line
         if (headerType > 0) {
             updateOrAddInArray(headersCount, headerType - 1, 1, true)
             let nestHeaders = headersCount.map((v, i) => i > headerType - 1 ? 0 : v)
@@ -79,7 +79,7 @@ readInterface.on('line', line => {
                     tableObj = {}
                     currentRow.forEach(v => tableObj[v] = "")
                     tableCount++
-                } else if (!currentRow.every(v => /(-)\1/.test(v))) {
+                } else if (!currentRow.every(v => /(-)+(:)?/.test(v))) {
                     let rowObj = {}
                     Object.keys(tableObj).forEach((key, i) => rowObj[key] = currentRow[i])
                     _.set(jsonOutput, `${lastKey}.content.[${contentCount}].[${tableCount++ - 1}]`, rowObj)
@@ -91,7 +91,6 @@ readInterface.on('line', line => {
                 tableCount = 0
             }
         }
-        currLine = line
     }
 })
 
