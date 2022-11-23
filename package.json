@@ -1,0 +1,13 @@
+{
+  "name": "md2json",
+  "version": "1.0.0",
+  "description": "Markdown converter to JSON format",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {},
+  "author": "zAlweNy26",
+  "license": "MIT",
+  "dependencies": {
+    "lodash": "^4.17.21"
+  }
+}

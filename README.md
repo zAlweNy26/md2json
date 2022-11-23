@@ -1,2 +1,3 @@
-# srdtojson
- Dungeons & Dragons System Reference Document (SRD) converter to json
+# MD2JSON
+
+Markdown converter to JSON format
